@@ -1,0 +1,43 @@
+*&---------------------------------------------------------------------*
+*& Include          ZFIGEBR_PEL0305_PBO
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Module STATUS_9000 OUTPUT
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+MODULE status_9000 OUTPUT.
+ SET PF-STATUS 'STATUS_9000'.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*& Module DISPLAY_ALV OUTPUT
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+MODULE display_alv OUTPUT.
+DATA: ok_handler TYPE REF TO lcl_event_handler ##DECL_MODUL. "handler
+  IF NOT ok_custom_container IS BOUND.
+    PERFORM f_create_custom_container.
+    PERFORM f_create_field_catalog.
+    PERFORM f_create_layout.
+    PERFORM f_create_splitter.
+    PERFORM f_create_alv.
+    CREATE OBJECT ok_handler.
+    SET HANDLER ok_handler->l_top_of_page     FOR ok_alv_grid.
+    SET HANDLER ok_handler->l_on_double_click FOR ok_alv_grid.
+    PERFORM f_first_display_alv.
+
+    CALL METHOD ok_dyndoc_id->initialize_document
+      EXPORTING
+        background_color = cl_dd_area=>col_textarea.
+
+* Processing events
+    CALL METHOD ok_alv_grid->list_processing_events
+      EXPORTING
+        i_event_name = 'TOP_OF_PAGE'
+        i_dyndoc_id  = ok_dyndoc_id.
+  ELSE.
+    PERFORM f_refresh_table.
+  ENDIF.
+
+ENDMODULE.

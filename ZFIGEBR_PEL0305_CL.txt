@@ -1,0 +1,30 @@
+*&---------------------------------------------------------------------*
+*& Include          ZFIGEBR_PEL0305_CL
+*&---------------------------------------------------------------------*
+CLASS lcl_event_handler DEFINITION FINAL.
+  PUBLIC SECTION .
+    METHODS:
+*Event Handler for Top of page
+      l_top_of_page FOR EVENT top_of_page OF cl_gui_alv_grid.
+*Event Hotspot
+    METHODS : l_on_double_click FOR EVENT double_click OF cl_gui_alv_grid   IMPORTING e_row.
+
+ENDCLASS.             "lcl_event_handler DEFINITION
+
+
+*----------------------------------------------------------------------*
+*       CLASS LCL_EVENT_HANDLER IMPLEMENTATION
+*----------------------------------------------------------------------*
+*
+*----------------------------------------------------------------------*
+CLASS lcl_event_handler IMPLEMENTATION.
+  METHOD l_top_of_page.
+* Top-of-page event
+    PERFORM f_event_top_of_page USING ok_dyndoc_id.
+  ENDMETHOD.                            "top_of_page
+*Implementation Hostpot
+  METHOD l_on_double_click.
+    PERFORM f_hospot_avl USING e_row.
+  ENDMETHOD.
+
+ENDCLASS.       "LCL_EVENT_HANDLER IMPLEMENTATION

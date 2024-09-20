@@ -1,0 +1,55 @@
+*&---------------------------------------------------------------------*
+*& Include          ZFIGEBR_PEL0305_TOP
+*&---------------------------------------------------------------------*
+TABLES: acdoca.
+
+TYPES: BEGIN OF ty_PEL0305,
+  monat     TYPE string,
+  BELNR     TYPE BELNR_D,
+  docln     TYPE string,
+  t_doc     TYPE String,
+  no_doc    TYPE string,
+  r_soc     TYPE string,
+  bldat     TYPE bldat,
+  HSL       TYPE FINS_VHCUR12,
+  estado    TYPE string,
+  ctamayor  TYPE RACCT,
+  ctaalter  TYPE ALTKT_SKB1,
+  END OF ty_PEL0305,
+         ty_PEL0305_cds TYPE TABLE OF ZFI_GEB_LSCC509_P,
+  BEGIN OF ty_datatxt,
+    monat     TYPE string,
+    BELNR     TYPE string,
+    docln     TYPE string,
+    t_doc     TYPE String,
+    no_doc    TYPE string,
+    r_soc     TYPE string,
+    bldat     TYPE string,
+    HSL       TYPE string,
+    estado    TYPE string,
+    ctamayor  TYPE string,
+    ctaalter  TYPE string,
+  END OF ty_datatxt.
+
+  DATA: gt_PEL0305   TYPE STANDARD TABLE OF ty_PEL0305,
+        gt_datatxt   TYPE STANDARD TABLE OF ty_datatxt,
+        gs_datos_soc TYPE bapi0002_3,
+        gv_dia(10)   TYPE c,
+        gv_data      TYPE c,
+        gv_paval     TYPE paval,
+        gv_butxt     TYPE string,
+        gv_waers     TYPE WAERS.
+
+************************************************************************
+* DEFINICION DE OBJETOS ALV
+************************************************************************
+DATA: ok_custom_container TYPE REF TO cl_gui_custom_container,
+      ok_alv_grid         TYPE REF TO cl_gui_alv_grid,
+      gt_fieldcatalog     TYPE lvc_t_fcat,
+      gs_layout           TYPE lvc_s_layo.
+
+DATA: ok_dyndoc_id   TYPE REF TO cl_dd_document,
+      ok_splitter    TYPE REF TO cl_gui_splitter_container,
+      ok_parent_grid TYPE REF TO cl_gui_container,
+      ok_parent_top  TYPE REF TO cl_gui_container,
+      ok_html_cntrl  TYPE REF TO cl_gui_html_viewer.

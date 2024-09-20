@@ -1,0 +1,713 @@
+*&---------------------------------------------------------------------*
+*& Include          ZFIGEBR_PEL0305_F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form f_start_of_selection
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+FORM f_start_of_selection .
+*.ALV
+  IF p_op001 = 'X'.
+    PERFORM f_authority_check USING '03'.
+    PERFORM f_get_data_cds.
+    CALL SCREEN 9000.
+  ENDIF.
+*.Txt
+  IF p_op002 = 'X'.
+    IF p_codop IS INITIAL or p_indop IS INITIAL.
+      MESSAGE TEXT-023 TYPE 'I'.
+      LEAVE LIST-PROCESSING.
+    ELSE.
+      PERFORM f_authority_check USING '04'.
+      PERFORM f_get_data_cds.
+      PERFORM f_built_txt.
+    ENDIF.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form f_get_data_cds
+*&---------------------------------------------------------------------*
+*& Consulta y obtención de registros.
+*&---------------------------------------------------------------------*
+FORM f_get_data_cds .
+*.Concateno año y mes para validar AUGDT campo CDS
+*.Select a vista CDS
+  SELECT *
+    FROM ZFI_GEB_LSCC509_P ##DB_FEATURE_MODE[AMDP_TABLE_FUNCTION]
+    WHERE belnr IN @so_belnr AND
+      rbukrs    EQ @p_bukrs  AND
+      ejercicio EQ @p_gjahr  AND
+      periodo   <= @p_monat  AND
+      RLDNR     EQ @p_rldnr  AND
+      programa  EQ @sy-repid
+    INTO TABLE @DATA(lt_data).
+
+    PERFORM f_get_header.
+
+**..Valido si el retorno de la tabla es vacia y el periodo esta dentro del rango
+    IF ( sy-subrc <> 0 OR lt_data IS INITIAL ) AND P_monat BETWEEN '1' AND '12' .
+***...Se ejecuta cuando no hay data
+      IF p_op001 = 'X'.             "Radio button ALV
+        MESSAGE TEXT-005 TYPE 'S'.  "No hay registros para generar el informe
+      ENDIF.
+      IF p_op002 = 'X'.             "Radio button TXT
+        gv_data = '0'.              "Indicador del contenido del libro sin información
+        PERFORM f_built_data_empty. "Obtengo data para construir nombre del txt
+      ENDIF.
+    ELSE.
+***...Se ejecuta cuando hay data
+      gv_data = '1'.                "Indicador del contenido del libro con información
+      SORT lt_data BY docln ASCENDING.
+      PERFORM f_built_data USING lt_data.
+    ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form f_built_data
+*&---------------------------------------------------------------------*
+*& Construcción de data
+*&---------------------------------------------------------------------*
+*&      --> LT_DATA
+*&---------------------------------------------------------------------*
+FORM f_built_data  USING p_lt_data TYPE ty_pel0305_cds.
+  DATA: ls_pel0305  TYPE ty_pel0305,
+        ls_datatxt  TYPE ty_datatxt,
+        lv_periodo  TYPE sy-datum,
+        lv_last_day TYPE sy-datum,
+        lv_perio    TYPE string,
+        lv_hsl      TYPE string.
+*.Asigno a la fecha el día 1 para calculo del último día del mes
+  lv_periodo = p_gjahr && p_monat && '01'.
+
+*.Recorro tabla interna obtenida de CDS para construir las tablas del ALV y TXT
+  LOOP AT p_lt_data ASSIGNING FIELD-SYMBOL(<fsl_data>).
+    CLEAR: lv_perio,
+           lv_hsl.
+***..Obtengo el último día del mes
+    PERFORM f_get_last_day USING lv_periodo
+                        CHANGING lv_last_day.
+**..Asigno fecha con último día del mes
+    lv_perio = p_gjahr && p_monat && lv_last_day+6(2)."Periodo.
+**..Construuyo data Tabla ALV
+    ls_pel0305-monat    = lv_last_day+6(2) && |.| && p_monat && |.| && p_gjahr  ."Periodo.
+    ls_pel0305-belnr    = <fsl_data>-belnr.         "CUO
+    ls_pel0305-docln    = <fsl_data>-docln.         "Correlativo
+    ls_pel0305-t_doc    = <fsl_data>-taxtype.       "Tipo de doc identidad de cliente
+    ls_pel0305-no_doc   = <fsl_data>-taxnum.        "No. de identificación
+    ls_pel0305-r_soc    = <fsl_data>-razon_social.  "Razon social
+    ls_pel0305-bldat    = <fsl_data>-bldat.         "Fecha de emisión
+    ls_pel0305-hsl      = <fsl_data>-hsl.           "Saldo
+    IF <fsl_data>-belnr IN so_beln2  AND <fsl_data>-ejercicio = p_gjahr2 AND so_beln2 IS NOT INITIAL.
+        ls_pel0305-estado = 9.
+      ELSE.
+        ls_pel0305-estado = <fsl_data>-estado.
+      ENDIF.
+    ls_pel0305-ctamayor = <fsl_data>-ctamayor.      "Cta Mayor
+    ls_pel0305-ctaalter = <fsl_data>-ctaalter.      "Cta Alternativa
+
+    APPEND ls_pel0305 TO gt_pel0305.
+    CLEAR ls_pel0305.
+
+**..Construyo data tabla TXT
+    ls_datatxt-monat     = lv_perio.        "Fecha
+    ls_datatxt-belnr    = <fsl_data>-belnr.         "CUO
+    ls_datatxt-docln    = <fsl_data>-docln.         "Correlativo
+    ls_datatxt-t_doc    = <fsl_data>-taxtype.       "Tipo de doc identidad de cliente
+    ls_datatxt-no_doc   = <fsl_data>-taxnum.        "No. de identificación
+    ls_datatxt-r_soc    = <fsl_data>-razon_social.  "Razon social
+
+    ls_datatxt-bldat  =  <fsl_data>-bldat+6(2) && |/| && <fsl_data>-bldat+4(2) && |/| && <fsl_data>-bldat+0(4). "Fecha de emisión
+    IF <fsl_data>-hsl < 0.
+      CLEAR lv_hsl.
+      lv_hsl = <fsl_data>-hsl.
+      REPLACE '-' WITH '' INTO lv_hsl.
+      ls_datatxt-hsl       = |-| && lv_hsl .        "Saldo final con formato negativo delante
+    ELSE.
+      ls_datatxt-hsl       = <fsl_data>-hsl.
+    ENDIF.
+*    ls_datatxt-estado   = <fsl_data>-estado.        "Estado
+    IF <fsl_data>-belnr IN so_beln2  AND <fsl_data>-ejercicio = p_gjahr2 AND so_beln2 IS NOT INITIAL.
+        ls_datatxt-estado = 9.
+      ELSE.
+        ls_datatxt-estado = <fsl_data>-estado.
+      ENDIF.
+    ls_datatxt-ctamayor = <fsl_data>-ctamayor.      "Cta Mayor
+    ls_datatxt-ctaalter = <fsl_data>-ctaalter.      "Cta Alternativa
+
+    APPEND ls_datatxt TO gt_datatxt.
+    CLEAR ls_datatxt.
+    ENDLOOP.
+***..Asigno el último día a variable global para construcción del nombre TXT
+    gv_dia = lv_last_day+6(2).
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form f_create_custom_container
+*&---------------------------------------------------------------------*
+*& Creación de contenedor
+*&---------------------------------------------------------------------*
+FORM f_create_custom_container .
+  CREATE OBJECT ok_custom_container
+    EXPORTING
+*     parent                      =
+      container_name              = 'ALV_CONT'
+    EXCEPTIONS
+      cntl_error                  = 1
+      cntl_system_error           = 2
+      create_error                = 3
+      lifetime_error              = 4
+      lifetime_dynpro_dynpro_link = 5
+      OTHERS                      = 6.
+  IF sy-subrc <> 0.
+    MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+               WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form f_create_field_catalog
+*&---------------------------------------------------------------------*
+*& Construcción del catálogo de campos
+*&---------------------------------------------------------------------*
+FORM f_create_field_catalog .
+  DATA: lv_table_name TYPE char12 VALUE 'GT_PEL0305'.
+  DATA: ls_fcat LIKE LINE OF gt_fieldcatalog.
+  CLEAR: gt_fieldcatalog, ls_fcat.
+
+****** Construcción de field catalog
+  ls_fcat-col_pos   = '1'.
+  ls_fcat-fieldname = 'MONAT' .
+  ls_fcat-tabname   = lv_table_name.                  "TI cuentas contables 37 49
+  ls_fcat-coltext   = TEXT-026.                       "PERIODO.
+  APPEND ls_fcat TO gt_fieldcatalog.
+  CLEAR ls_fcat .
+
+  ls_fcat-col_pos   = '2'.
+  ls_fcat-fieldname = 'BELNR' .
+  ls_fcat-tabname   = lv_table_name.                   "TI cuentas contables 37 49
+  ls_fcat-coltext   = TEXT-008.                        "CUO
+  APPEND ls_fcat TO gt_fieldcatalog.
+  CLEAR ls_fcat .
+
+  ls_fcat-col_pos   = '3'.
+  ls_fcat-fieldname = 'DOCLN' ."'XBLNR' .
+  ls_fcat-tabname   = lv_table_name.                   "TI areas inaccesibles
+  ls_fcat-coltext   = TEXT-009.                        "'Correlativo
+  APPEND ls_fcat TO gt_fieldcatalog.
+  CLEAR ls_fcat .
+
+  ls_fcat-col_pos   = '4'.
+  ls_fcat-fieldname = 'T_DOC' .
+  ls_fcat-tabname   = lv_table_name.                   "TI areas inaccesibles
+  ls_fcat-coltext   = TEXT-010.                        "TIPO DE DOCUMENTO DE IDENTIDAD DEL CLIENTE
+  APPEND ls_fcat TO gt_fieldcatalog.
+  CLEAR ls_fcat .
+
+  ls_fcat-col_pos   = '5'.
+  ls_fcat-fieldname = 'NO_DOC' .
+  ls_fcat-tabname   = lv_table_name.                   "TI cuentas contables 37 49
+  ls_fcat-coltext   = TEXT-011.                        "No Identificación
+  APPEND ls_fcat TO gt_fieldcatalog.
+  CLEAR ls_fcat .
+
+  ls_fcat-col_pos   = '6'.
+  ls_fcat-fieldname = 'R_SOC' .
+  ls_fcat-tabname   = lv_table_name.                   "TI cuentas contables 37 49
+  ls_fcat-coltext   = TEXT-012.                        "Razon social
+  APPEND ls_fcat TO gt_fieldcatalog.
+  CLEAR ls_fcat .
+
+  ls_fcat-col_pos   = '7'.
+  ls_fcat-fieldname = 'BLDAT' .
+  ls_fcat-tabname   = lv_table_name.                   "TI cuentas contables 37 49
+  ls_fcat-coltext   = TEXT-013.                        "Fecha Emisión
+  APPEND ls_fcat TO gt_fieldcatalog.
+  CLEAR ls_fcat .
+
+  ls_fcat-col_pos   = '8'.
+  ls_fcat-fieldname = 'HSL' .
+  ls_fcat-tabname   = lv_table_name.                   "TI cuentas contables 37 49
+  ls_fcat-coltext   = TEXT-014.                        "Monto
+  APPEND ls_fcat TO gt_fieldcatalog.
+  CLEAR ls_fcat .
+
+  ls_fcat-col_pos   = '9'.
+  ls_fcat-fieldname = 'ESTADO' .
+  ls_fcat-tabname   = lv_table_name.                   "TI cuentas contables 37 49
+  ls_fcat-coltext   = TEXT-016.                        "Estado
+  APPEND ls_fcat TO gt_fieldcatalog.
+  CLEAR ls_fcat .
+
+  ls_fcat-col_pos   = '10'.
+  ls_fcat-fieldname = 'CTAMAYOR' .
+  ls_fcat-tabname   = lv_table_name.                   "TI cuentas contables 37 49
+  ls_fcat-coltext   = TEXT-017.                        "Cuenta mayor
+  APPEND ls_fcat TO gt_fieldcatalog.
+  CLEAR ls_fcat .
+
+  ls_fcat-col_pos   = '11'.
+  ls_fcat-fieldname = 'CTAALTER' .
+  ls_fcat-tabname   = lv_table_name.                   "TI cuentas contables 37 49
+  ls_fcat-coltext   = TEXT-018.                        "Cuenta alternativa
+  APPEND ls_fcat TO gt_fieldcatalog.
+  CLEAR ls_fcat .
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form f_create_layout
+*&---------------------------------------------------------------------*
+*& Creación de layout
+*&---------------------------------------------------------------------*
+FORM f_create_layout .
+  gs_layout-cwidth_opt  = 'X'.
+  gs_layout-col_opt     = 'X'.
+  gs_layout-zebra       = 'X'.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form f_create_alv
+*&---------------------------------------------------------------------*
+*& Creación de objeto alv grid
+*&---------------------------------------------------------------------*
+FORM f_create_alv .
+CREATE OBJECT ok_alv_grid
+    EXPORTING
+      i_parent          = ok_parent_grid
+    EXCEPTIONS
+      error_cntl_create = 1                " Error when creating the control
+      error_cntl_init   = 2                " Error While Initializing Control
+      error_cntl_link   = 3                " Error While Linking Control
+      error_dp_create   = 4                " Error While Creating DataProvider Control
+      OTHERS            = 5.
+  IF sy-subrc <> 0.
+    MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+      WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form f_first_display_alv
+*&---------------------------------------------------------------------*
+*& Mostrar ALV
+*&---------------------------------------------------------------------*
+FORM f_first_display_alv .
+ok_alv_grid->set_table_for_first_display(
+    EXPORTING
+      is_layout                     =  gs_layout                " Layout
+    CHANGING
+      it_outtab                     = gt_pel0305             " Output Table
+      it_fieldcatalog               = gt_fieldcatalog          " Field Catalog
+*      it_sort                       =  ti_sort                 " Sort Criteria
+*      it_filter                     =                          " Filter Criteria
+    EXCEPTIONS
+      invalid_parameter_combination = 1                         " Wrong Parameter
+      program_error                 = 2                         " Program Errors
+      too_many_lines                = 3                         " Too many Rows in Ready for Input Grid
+      OTHERS                        = 4 ).
+  IF sy-subrc <> 0.
+   MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+     WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form f_refresh_table
+*&---------------------------------------------------------------------*
+*& Actualizar tabla
+*&---------------------------------------------------------------------*
+FORM f_refresh_table .
+  ok_alv_grid->refresh_table_display(
+*  EXPORTING
+*    is_stable      =                  " With Stable Rows/Columns
+*    i_soft_refresh =                  " Without Sort, Filter, etc.
+    EXCEPTIONS
+      finished       = 1                " Display was Ended (by Export)
+      OTHERS         = 2  ).
+  IF sy-subrc <> 0.
+    MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+      WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form f_get_last_day
+*&---------------------------------------------------------------------*
+*& Obtener el último día del mes
+*&---------------------------------------------------------------------*
+*&      --> LV_PERIODO
+*&      <-- LV_LAST_DAY
+*&---------------------------------------------------------------------*
+FORM f_get_last_day  USING    p_lv_periodo  TYPE sy-datum
+                     CHANGING p_lv_last_day TYPE sy-datum.
+  CALL FUNCTION 'FKK_LAST_DAY_OF_MONTH'
+      EXPORTING
+        day_in            = p_lv_periodo
+      IMPORTING
+        last_day_of_month = p_lv_last_day
+      EXCEPTIONS
+        day_in_no_date    = 1
+        OTHERS            = 2.
+    IF sy-subrc <> 0.
+      MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+          WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+    ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form f_built_txt
+*&---------------------------------------------------------------------*
+*& Construcción de TXT
+*&---------------------------------------------------------------------*
+FORM f_built_txt .
+*--------------------------------------------------------------------*
+*   DEFINICIÒN VARIABLES
+*--------------------------------------------------------------------*
+  DATA: lv_fullpath TYPE string,
+        lv_moneda   TYPE c,
+        lv_name2    TYPE string.
+*--------------------------------------------------------------------*
+*  WORD AREAS LOCALES.
+*--------------------------------------------------------------------*
+  DATA: ls_convert(300),
+        ls_convert2(300).
+*--------------------------------------------------------------------*
+*   DEFINICIÒN TABLAS
+*--------------------------------------------------------------------*
+  ".tabla que devolvera la tabla en un archivo csv
+  DATA: lt_convert TYPE truxs_t_text_data.
+*--------------------------------------------------------------------*
+
+  ".Funcion que permite convertir una tabla en un archivo .txt
+  CALL FUNCTION 'SAP_CONVERT_TO_TEX_FORMAT'
+    EXPORTING
+      i_field_seperator    = '|'
+    TABLES
+      i_tab_sap_data       = gt_datatxt
+    CHANGING
+      i_tab_converted_data = lt_convert
+    EXCEPTIONS
+      conversion_failed    = 1
+      OTHERS               = 2.
+  IF sy-subrc <> 0.
+    MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+            WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+  ELSE.
+**..Valido el formato de la moneda y asigno valor indicado en EF
+    IF gv_waers = 'PEN'.
+      lv_moneda = '1'.                                "Soles = 1
+    ELSEIF gv_waers = 'USD'.
+      lv_moneda = '2'.                                "Dolares = 2
+    ENDIF.
+**..Construyo nombre del archivo TXT
+*    IF ( lines( lt_convert[] ) NE 0 ).
+    lv_name2 = |LE| && gv_paval && p_gjahr && p_monat && gv_dia && '030500' && p_codop && p_indop && gv_data && lv_moneda && 1 && |.txt|.
+*    ENDIF.
+* agregamos la ruta del archivo
+    lv_fullpath = p_dire.
+    TRANSLATE lv_fullpath TO LOWER CASE.
+    lv_fullpath = lv_fullpath && lv_name2.
+** Abrimos el archivo.
+    OPEN DATASET lv_fullpath FOR OUTPUT IN TEXT MODE ENCODING NON-UNICODE.
+    IF sy-subrc EQ 0.
+** Llenamos el archivo plano
+      IF lt_convert IS INITIAL. "Si tabla es vacia asigno variable vacia para permitir la descarga del archivo
+        DATA(lv_empty) = ''.
+        CONDENSE lv_empty NO-GAPS.
+        TRANSFER lv_empty TO lv_fullpath.
+
+      ELSE. "Si tabla no es vacia la reccorro y transfiero los registros
+        LOOP AT lt_convert INTO ls_convert.                         ##INTO_OK
+          CONCATENATE ls_convert '|' INTO ls_convert2.
+          TRANSFER ls_convert2 TO lv_fullpath.
+          IF sy-subrc NE 0.
+            EXIT.
+          ELSE.
+            CONTINUE.
+          ENDIF.
+        ENDLOOP.
+      ENDIF.
+** Cerramos el archivo plano
+      CLOSE DATASET lv_fullpath.
+      IF sy-subrc = 0.
+        MESSAGE i000(oo) WITH  TEXT-025 lv_fullpath."Se cargo el registro en la ruta siguiente
+      ENDIF.
+    ELSE.
+      MESSAGE i000(oo) WITH  TEXT-027 lv_fullpath."No se pudo cargar el archivo
+    ENDIF.
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form f_hospot_avl
+*&---------------------------------------------------------------------*
+*& Hospot
+*&---------------------------------------------------------------------*
+*&      --> E_ROW_ID
+*&---------------------------------------------------------------------*
+FORM f_hospot_avl  USING    p_e_row_id TYPE any.
+
+  DATA: lt_parid     TYPE TABLE OF rfc_spagpa,
+        ls_parid     TYPE rfc_spagpa.
+
+  READ TABLE gt_pel0305 INDEX p_e_row_id ASSIGNING FIELD-SYMBOL(<fsl_line>).
+
+  ls_parid-parid  = 'BLN'.
+  ls_parid-parval = <fsl_line>-belnr .
+  APPEND ls_parid TO lt_parid.
+  ls_parid-parid  = 'BUK'.
+  ls_parid-parval = p_bukrs.
+  APPEND ls_parid TO lt_parid.
+  ls_parid-parid  = 'GJR'.
+  ls_parid-parval = p_gjahr .
+  APPEND ls_parid TO lt_parid.
+  CLEAR ls_parid.
+
+  CALL FUNCTION 'ABAP4_CALL_TRANSACTION'
+    EXPORTING
+      tcode                   = 'FB03'
+      skip_screen             = 'X'
+    TABLES
+      spagpa_tab              = lt_parid
+    EXCEPTIONS
+      call_transaction_denied = 1
+      tcode_invalid           = 2
+      OTHERS                  = 3.
+  IF sy-subrc <> 0.
+    MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+            WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form f_create_splitter
+*&---------------------------------------------------------------------*
+*& División de contendor
+*&---------------------------------------------------------------------*
+FORM f_create_splitter .
+DATA lv_height TYPE int4 VALUE 20.
+* Create TOP-Document
+  CREATE OBJECT ok_dyndoc_id
+    EXPORTING
+      style = 'ALV_GRID'.
+
+* Create Splitter for custom_container
+  CREATE OBJECT ok_splitter
+    EXPORTING
+      parent  = ok_custom_container
+      rows    = 2
+      columns = 1.
+
+  CALL METHOD ok_splitter->get_container
+    EXPORTING
+      row       = 1
+      column    = 1
+    RECEIVING
+      container = ok_parent_top.
+
+  CALL METHOD ok_splitter->get_container
+    EXPORTING
+      row       = 2
+      column    = 1
+    RECEIVING
+      container = ok_parent_grid.
+
+* Set height for g_parent_html
+  CALL METHOD ok_splitter->set_row_height
+    EXPORTING
+      id     = 1
+      height = lv_height.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form f_event_top_of_page
+*&---------------------------------------------------------------------*
+*& Encabezados ALV
+*&---------------------------------------------------------------------*
+*&      --> OK_DYNDOC_ID
+*&---------------------------------------------------------------------*
+FORM f_event_top_of_page USING p_dyndoc_id TYPE REF TO cl_dd_document.
+  CONSTANTS co_text(255) TYPE c VALUE 'LIBRO DE SALDOS CUENTAS CONTABLES 16 - 17'.
+  DATA : lv_text(255)    TYPE c .
+
+**Espacio
+  CALL METHOD p_dyndoc_id->new_line.
+**Encabezado titulo
+  CALL METHOD p_dyndoc_id->add_text
+    EXPORTING
+      text         = co_text "'LIBRO DE SALDOS CUENTAS CONTABLES 16 - 17'
+      sap_style    = cl_dd_area=>heading
+      sap_fontsize = cl_dd_area=>medium
+      sap_color    = cl_dd_area=>list_heading_int.
+
+*Espacios
+  CALL METHOD p_dyndoc_id->new_line.
+  CALL METHOD p_dyndoc_id->new_line.
+  CALL METHOD p_dyndoc_id->new_line.
+**Razon Social
+  lv_text = TEXT-022."Razón Social
+**
+  CALL METHOD ok_dyndoc_id->add_text
+    EXPORTING
+      text         = lv_text
+      sap_emphasis = cl_dd_area=>strong.
+  CLEAR lv_text.
+*Valor del campo razon social
+  lv_text = gv_butxt.
+  CALL METHOD p_dyndoc_id->add_gap.
+  CALL METHOD ok_dyndoc_id->add_text
+    EXPORTING
+      text         = lv_text
+      sap_emphasis = cl_dd_area=>small.
+  CLEAR lv_text.
+
+*"RUC
+  CALL METHOD p_dyndoc_id->new_line.
+
+  lv_text = TEXT-021. "RUC
+  CALL METHOD p_dyndoc_id->add_gap
+    EXPORTING
+      width = 14.
+  CALL METHOD ok_dyndoc_id->add_text
+    EXPORTING
+      text         = lv_text
+      sap_emphasis = cl_dd_area=>strong.
+  CLEAR lv_text.
+
+  lv_text = gv_paval."RUC
+  CALL METHOD p_dyndoc_id->add_gap.
+  CALL METHOD ok_dyndoc_id->add_text
+    EXPORTING
+      text         = lv_text
+      sap_emphasis = cl_dd_area=>small.
+  CLEAR lv_text.
+
+**Ejercicio
+  CALL METHOD p_dyndoc_id->new_line.
+  lv_text = TEXT-019."Ejercicio
+  CALL METHOD p_dyndoc_id->add_gap
+    EXPORTING
+      width = 7.
+  CALL METHOD ok_dyndoc_id->add_text
+    EXPORTING
+      text         = lv_text
+      sap_emphasis = cl_dd_area=>strong.
+  CLEAR lv_text.
+
+  lv_text = p_gjahr."Ejercicio
+  CALL METHOD p_dyndoc_id->add_gap.
+  CALL METHOD ok_dyndoc_id->add_text
+    EXPORTING
+      text         = lv_text
+      sap_emphasis = cl_dd_area=>small.
+  CLEAR lv_text.
+
+**Periodo
+  CALL METHOD p_dyndoc_id->new_line.
+  lv_text = TEXT-020. "Periodo
+
+  CALL METHOD p_dyndoc_id->add_gap
+    EXPORTING
+      width = 8.
+  CALL METHOD ok_dyndoc_id->add_text
+    EXPORTING
+      text         = lv_text
+      sap_emphasis = cl_dd_area=>strong.
+  CLEAR lv_text.
+
+  lv_text = p_monat."mes
+  CALL METHOD p_dyndoc_id->add_gap.
+  CALL METHOD ok_dyndoc_id->add_text
+    EXPORTING
+      text         = lv_text
+      sap_emphasis = cl_dd_area=>small.
+  CLEAR lv_text.
+
+  PERFORM f_display.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form f_display
+*&---------------------------------------------------------------------*
+*& Mostrar encabezados ALV
+*&---------------------------------------------------------------------*
+FORM f_display .
+DATA: lv_mensaje(132) TYPE c.
+  lv_mensaje = TEXT-027.
+* Creating html control
+  IF ok_html_cntrl IS INITIAL.
+    CREATE OBJECT ok_html_cntrl
+      EXPORTING
+        parent = ok_parent_top.
+  ENDIF.
+  CALL METHOD ok_dyndoc_id->merge_document.
+  ok_dyndoc_id->html_control = ok_html_cntrl.
+* Display document
+  CALL METHOD ok_dyndoc_id->display_document
+    EXPORTING
+      reuse_control      = 'X'
+      parent             = ok_parent_top
+    EXCEPTIONS
+      html_display_error = 1.
+  IF sy-subrc NE 0.
+    MESSAGE lv_mensaje TYPE 'I'.
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form f_authority_check
+*&---------------------------------------------------------------------*
+*& Objeto de Autorización
+*&---------------------------------------------------------------------*
+*& -->  p_num        actividad
+*&---------------------------------------------------------------------*
+FORM f_authority_check USING p_num TYPE any.
+  AUTHORITY-CHECK OBJECT 'F_BKPF_BUK'
+      ID 'BUKRS' FIELD p_bukrs
+      ID 'ACTVT'  FIELD p_num.
+
+  IF sy-subrc <> 0.
+    MESSAGE TEXT-024 TYPE 'I'. "No tiene autorización para esta funcionalidad
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form f_built_data_empty
+*&-----------------------------------------------------------------------*
+*& Obtiene datos para construcción del nombre del archivo cuando es vacio
+*&-----------------------------------------------------------------------*
+FORM f_built_data_empty .
+  DATA: lv_periodo  TYPE sy-datum,
+        lv_last_day TYPE sy-datum.
+
+*.Calculo del último día del mes
+  lv_periodo = p_gjahr && p_monat && '01'.
+
+  PERFORM f_get_last_day USING lv_periodo
+                      CHANGING lv_last_day.
+*Guardo el último día del mes en la variable global
+  gv_dia = lv_last_day+6(2).
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form f_get_header
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM f_get_header .
+*.Obtengo RUC
+  SELECT SINGLE PAVAL
+    FROM t001z
+    INTO gv_paval
+    WHERE party EQ 'ZRUC' AND
+          bukrs EQ p_bukrs.
+*.Obtengo Moneda
+  SELECT SINGLE WAERS
+    FROM t001
+    INTO gv_waers
+    WHERE bukrs EQ p_bukrs.
+*.Obtengo Razón Social
+  CALL FUNCTION 'BAPI_COMPANYCODE_GETDETAIL'
+    EXPORTING
+      companycodeid       = p_bukrs
+    IMPORTING
+      companycode_address = gs_datos_soc.
+
+  IF gs_datos_soc IS NOT INITIAL.
+    gv_butxt = gs_datos_soc-name.
+  ELSE.
+     MESSAGE TEXT-007 TYPE 'S'. "No existe razón social asociada para esta sociedad
+  ENDIF.
+ENDFORM.

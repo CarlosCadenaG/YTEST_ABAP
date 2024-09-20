@@ -1,0 +1,25 @@
+*&---------------------------------------------------------------------*
+*& Report ZFIGEBR_PEL0305
+*&---------------------------------------------------------------------*
+*& Fecha: 16/04/2021                                                    *
+*& Cliente: GEB                                                         *
+*& Nombre del Programa: ZFIGEBR_PEL0305                                 *
+*& Autor: F_SZAMBRANO                                                   *
+*& Módulo: FI                                                           *
+*& Transacción: ZFIGEB_PEL0305                                          *
+*& Orden de Transporte: GSDK904738 Tarea: GSDK904739                    *
+*& Applex                                                               *
+*& Descripción: Saldo de las ctas contables 16, 17                      *
+*&----------------------------------------------------------------------*
+REPORT ZFIGEBR_PEL0305.
+
+INCLUDE ZFIGEBR_PEL0305_TOP.
+INCLUDE ZFIGEBR_PEL0305_SEL.
+INCLUDE ZFIGEBR_PEL0305_CL.
+INCLUDE ZFIGEBR_PEL0305_PBO.
+INCLUDE ZFIGEBR_PEL0305_PAI.
+INCLUDE ZFIGEBR_PEL0305_F01.
+
+START-OF-SELECTION.
+
+ PERFORM f_start_of_selection.

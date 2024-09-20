@@ -1,0 +1,41 @@
+*&---------------------------------------------------------------------*
+*& Include          ZFIGEBR_PEL0305_SEL
+*&---------------------------------------------------------------------*
+SELECTION-SCREEN BEGIN OF BLOCK rad1 WITH FRAME TITLE TEXT-001.
+
+  PARAMETERS: p_bukrs TYPE bkpf-bukrs OBLIGATORY,
+              p_gjahr TYPE bkpf-gjahr OBLIGATORY,
+              p_monat TYPE bkpf-monat OBLIGATORY,
+              p_rldnr TYPE acdoca-rldnr OBLIGATORY DEFAULT '0L'.
+
+  SELECT-OPTIONS: so_belnr FOR acdoca-belnr.
+
+   SELECTION-SCREEN END OF BLOCK rad1.
+
+   SELECTION-SCREEN BEGIN OF BLOCK rad2 WITH FRAME TITLE TEXT-002.
+
+  SELECTION-SCREEN BEGIN OF LINE.
+    PARAMETERS: p_op001 RADIOBUTTON GROUP gr1  DEFAULT 'X' ##SEL_WRONG.
+    SELECTION-SCREEN COMMENT 2(70) TEXT-003 FOR FIELD p_op001.
+  SELECTION-SCREEN END OF LINE.
+
+  SELECTION-SCREEN BEGIN OF LINE.
+    PARAMETERS: p_op002 RADIOBUTTON GROUP gr1 ##SEL_WRONG.
+    SELECTION-SCREEN COMMENT 2(70) TEXT-004 FOR FIELD p_op002.
+    PARAMETERS: p_dire LIKE rlgrap-filename DEFAULT '/USR/SAP/TMP/'
+                                            MODIF ID im1.
+  SELECTION-SCREEN END OF LINE.
+
+  PARAMETERS: p_codop   TYPE zgebfi_t_opc_txt-cod_oport
+                        MATCHCODE OBJECT zayuda_cod_opt MODIF ID im1,
+              p_indop TYPE zgebfi_t_ind_ope-indic_oper
+                        MATCHCODE OBJECT zayuda_ind_ope MODIF ID im1.
+
+  SELECTION-SCREEN END OF BLOCK rad2 .
+
+  SELECTION-SCREEN BEGIN OF BLOCK b2 WITH FRAME TITLE TEXT-006.
+
+    PARAMETERS p_gjahr2 TYPE bkpf-gjahr.
+    SELECT-OPTIONS: so_beln2 FOR acdoca-belnr.
+
+   SELECTION-SCREEN END OF BLOCK b2.

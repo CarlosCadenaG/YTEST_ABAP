@@ -1,0 +1,195 @@
+*&---------------------------------------------------------------------*
+*& Include          Z_ENVIO_CORREO_F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form F_ENVIO_CORREO
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM f_envio_correo.
+  PERFORM f_ingresar_datos.
+  PERFORM f_cuerpo_correo.
+  PERFORM f_preparar_envio.
+  PERFORM f_adjuntar_pdf.
+  PERFORM f_enviar_correo.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form F_INGRESAR_DATOS
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM f_ingresar_datos .
+  gv_name = p_nombre.  "Nombre
+  gv_cc = p_cc.        "Cedula
+  gv_mail = p_mail.    "Email
+  gv_asunt = p_asunt.  "Asunto
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form F_CUERPO_CORREO
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM f_cuerpo_correo .
+  lv_subject = p_asunt.
+
+*Leer la plantilla del correo hecha en la SO10 (Texto Estandar).
+  CALL FUNCTION 'READ_TEXT'
+    EXPORTING
+      id                      = lc_id
+      language                = sy-langu
+      name                    = lc_name
+      object                  = lc_object
+    IMPORTING
+      header                  = ls_header
+    TABLES
+      lines                   = lt_lines
+    EXCEPTIONS
+      id                      = 1
+      language                = 2
+      name                    = 3
+      not_found               = 4
+      object                  = 5
+      reference_check         = 6
+      wrong_access_to_archive = 7
+      OTHERS                  = 8.
+  IF sy-subrc <> 0.
+    MESSAGE 'ERROR EN LA FUNCION READ_TEXT' TYPE 'I'.
+  ENDIF.
+
+*Reemplazamos las variables en la plantilla
+  CALL FUNCTION 'INIT_TEXTSYMBOL'.
+
+*Cambiara todo lo que yo le indico que esta en la plantilla
+  CALL FUNCTION 'SET_TEXTSYMBOL'
+    EXPORTING
+      name    = '&TEXT_NAME&'
+      value   = gv_name
+      replace = abap_true.
+
+  CALL FUNCTION 'SET_TEXTSYMBOL'
+    EXPORTING
+      name    = '&TEXT_CC&'
+      value   = gv_cc
+      replace = abap_true.
+
+  CALL FUNCTION 'SET_TEXTSYMBOL'
+    EXPORTING
+      name    = '&TEXT_ASUN&'
+      value   = gv_asunt
+      replace = abap_true.
+
+  CALL FUNCTION 'SET_TEXTSYMBOL'
+    EXPORTING
+      name    = '&TEXT_MAIL&'
+      value   = gv_mail
+      replace = abap_true.
+
+*Longitud de las lineas de texto
+  DATA(lv_count) = lines( lt_lines ).
+
+*Con la siguiente funcion hacemos el reemplazo definitivo hecho con la funcion anterior.
+  CALL FUNCTION 'REPLACE_TEXTSYMBOL'
+    EXPORTING
+      endline   = lv_count
+      startline = 1
+    TABLES
+      lines     = lt_lines.
+
+*Convertir el cuerpo del email en un HTML
+  CALL FUNCTION 'CONVERT_ITF_TO_HTML'
+    EXPORTING
+      i_header       = ls_header
+    TABLES
+      t_itf_text     = lt_lines
+      t_html_text    = lt_html_text
+    EXCEPTIONS
+      syntax_check   = 1
+      replace        = 2
+      illegal_header = 3
+      OTHERS         = 4.
+
+  IF sy-subrc <> 0.
+    MESSAGE 'ERROR EN LA FUNCION CONVERT_ITF_TO_HTML' TYPE 'I'.
+  ENDIF.
+
+  lt_body_email[] = lt_html_text[].
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form F_PREPARAR_ENVIO
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM f_preparar_envio .
+* Crer objetos necesarios
+  lo_bcs    = cl_bcs=>create_persistent( ).
+  lo_sender = cl_sapuser_bcs=>create( sy-uname ).                     "EMISOR
+  lo_recip  = cl_cam_address_bcs=>create_internet_address( gv_mail ). "DESTINATARIO
+  lo_document = cl_document_bcs=>create_document( i_type    = lc_htm
+                                                  i_text    = lt_body_email
+                                                  i_subject = lv_subject ).
+
+* Asignar elementos creados
+  lo_bcs->set_sender( lo_sender ).
+  lo_bcs->add_recipient( i_recipient = lo_recip ).
+  lo_bcs->set_document( lo_document ).
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form F_ADJUNTAR_PDF
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM f_adjuntar_pdf .
+  OPEN DATASET f_name FOR INPUT IN BINARY MODE. "Abre el archivo en el servidor
+  READ DATASET f_name INTO x1.                  "Lee el archivo en el servidor
+  CLOSE DATASET f_name.                         "cerrar el archivo del servidor
+
+* TIPO DE ARCHIVO ADJUNTO
+  gv_attachment_type = 'PDF'.
+
+* NOMBRE DEL ARCHIVO ADJUNTO
+  gv_attachment_subject = 'Test'.
+
+* VISUALIZACION DEL ARCHIVO ADJUNTO DESCARGADO
+  gt_attachment = cl_document_bcs=>xstring_to_solix( x1 ).
+
+* TAMAÑO DEL ARCHIVO ADJUNTO
+  gv_attachment_size = xstrlen( x1 ).
+
+    TRY .
+      lo_document->add_attachment( i_attachment_type    = gv_attachment_type
+                                   i_attachment_size    = gv_attachment_size
+                                   i_attachment_subject = gv_attachment_subject
+                                   i_att_content_hex    = gt_attachment[] ).
+    CATCH cx_bcs INTO gx_exception.
+  ENDTRY.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form F_ENVIAR_CORREO
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM f_enviar_correo .
+  TRY.
+      lo_bcs->send( ).
+      COMMIT WORK.
+      MESSAGE 'CORREO ENVIADO' TYPE 'I'.
+  ENDTRY.
+ENDFORM.

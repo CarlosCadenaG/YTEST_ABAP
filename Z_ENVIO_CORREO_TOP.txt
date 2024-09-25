@@ -1,0 +1,38 @@
+*&---------------------------------------------------------------------*
+*& Include          Z_ENVIO_CORREO_TOP
+*&---------------------------------------------------------------------*
+*DECLARACIONES PARA LOS DATOS DE SELECCION DE PANTALLA
+DATA: gv_name  TYPE string,
+      gv_cc    TYPE string,
+      gv_mail  TYPE adr6-smtp_addr,
+      gv_asunt TYPE string.
+
+*DECLARACIONES PARA EL CUERPO DEL CORREO
+CONSTANTS: lc_htm    TYPE char03 VALUE 'HTM',
+           lc_id     TYPE tdid VALUE 'ST',
+           lc_name   TYPE tdobname VALUE 'Z_TEXTO_CORREO',
+           lc_object TYPE tdobject VALUE 'TEXT'.
+
+DATA: lv_subject    TYPE so_obj_des,
+      lv_att_title  TYPE so_obj_des,
+      ls_header     TYPE thead,
+      lt_body_email TYPE soli_tab,
+      lt_lines      TYPE TABLE OF tline,
+      lt_html_text  TYPE STANDARD TABLE OF htmlline.
+
+"DECLARACIONES PARA ADJUNTAR PDF
+DATA: gt_attachment         TYPE solix_tab,
+      gv_attachment_type    TYPE soodk-objtp,
+      gv_attachment_size    TYPE sood-objlen,
+      gv_attachment_subject TYPE sood-objdes,
+      gx_exception          TYPE REF TO cx_bcs.
+
+"DECLARACIONES PARA ENVIAR EL CORREO
+DATA: lo_bcs      TYPE REF TO cl_bcs,
+      lo_sender   TYPE REF TO if_sender_bcs,
+      lo_recip    TYPE REF TO if_recipient_bcs,
+      lo_document TYPE REF TO cl_document_bcs.
+
+*DECLARACION PARA CARGAR EL PDF
+DATA: f_name TYPE string VALUE '/usr/sap/tmp/Test.pdf',
+      x1     TYPE xstring.

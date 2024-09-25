@@ -1,0 +1,16 @@
+*&---------------------------------------------------------------------*
+*& Include          Z_ENVIO_CORREO_SEL
+*&---------------------------------------------------------------------*
+SELECTION-SCREEN BEGIN OF BLOCK a1 WITH FRAME TITLE TEXT-001. "Envio Correo PDF.
+PARAMETERS: p_cc     TYPE string OBLIGATORY,  "Cedula
+            p_nombre TYPE string OBLIGATORY,  "Nombre
+            p_mail   TYPE string OBLIGATORY,  "Correo Electronico
+            p_asunt  TYPE string OBLIGATORY.  "Asunto
+SELECTION-SCREEN END OF BLOCK a1.
+
+"Limpiar pantalla de seleccion
+AT SELECTION-SCREEN OUTPUT.
+  CLEAR: p_cc,
+         p_nombre,
+         p_mail,
+         p_asunt.

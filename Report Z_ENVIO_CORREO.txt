@@ -1,0 +1,14 @@
+*&---------------------------------------------------------------------*
+*& Report Z_ENVIO_CORREO
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+REPORT z_envio_correo.
+*Programa envio de PDF desde el sistema SAP por correo.
+INCLUDE: z_envio_correo_top,
+         z_envio_correo_sel,
+         z_envio_correo_f01.
+
+START-OF-SELECTION.
+
+  PERFORM f_envio_correo.

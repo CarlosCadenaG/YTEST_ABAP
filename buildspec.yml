@@ -8,7 +8,7 @@ phases:
   pre_build:
     commands:
       - echo "Clonando el repositorio..."
-      - git clone https://${GITHUB_USERNAME}:${GITHUB_PASSWORD}@github.com/[tu-usuario]/YTEST_ABAP.git
+      - git clone https://${GITHUB_USERNAME}:${GITHUB_PASSWORD}@github.com/[CarlosCadenaG]/YTEST_ABAP.git
   build:
     commands:
       - echo "Fase de construcción (sin acciones de construcción definidas)..."

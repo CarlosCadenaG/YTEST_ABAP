@@ -3,8 +3,7 @@ phases:
   install:
     commands:
       - echo "Instalando dependencias..."
-      - yum install -y git  # Instala Git
-      - yum install -y zip   # Asegúrate de tener zip instalado también
+      - yum install -y git zip  # Instala Git y zip
   pre_build:
     commands:
       - echo "Clonando el repositorio..."

@@ -16,3 +16,4 @@ phases:
       - echo "Comprimido y subiendo a S3..."
       - zip -r build-output.zip YTEST_ABAP/
       - aws s3 cp build-output.zip s3://ytest-abap-backups/
+      

@@ -1,0 +1,19 @@
+version: 0.2
+phases:
+  install:
+    commands:
+      - echo "Instalando dependencias..."
+      - yum install -y git  # Instala Git
+      - yum install -y zip   # Asegúrate de tener zip instalado también
+  pre_build:
+    commands:
+      - echo "Clonando el repositorio..."
+      - git clone https://${GITHUB_USERNAME}:${GITHUB_PASSWORD}@github.com/[tu-usuario]/YTEST_ABAP.git
+  build:
+    commands:
+      - echo "Fase de construcción (sin acciones de construcción definidas)..."
+  post_build:
+    commands:
+      - echo "Comprimido y subiendo a S3..."
+      - zip -r build-output.zip YTEST_ABAP/
+      - aws s3 cp build-output.zip s3://ytest-abap-backups/

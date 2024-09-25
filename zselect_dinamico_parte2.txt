@@ -1,0 +1,37 @@
+*&---------------------------------------------------------------------*
+*& Report  ZSELECT_DINAMICO
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+REPORT zselect_dinamico.
+
+PARAMETERS: p_carrid TYPE spfli-carrid,
+            p_connid TYPE spfli-connid,
+            p_table  TYPE tabname.
+
+DATA: vl_where TYPE string.
+
+FIELD-SYMBOLS:<fs_table>  TYPE STANDARD TABLE,
+              <fs_item>   TYPE any.
+
+"Armar sentencia where
+IF p_carrid IS NOT INITIAL AND p_connid IS NOT INITIAL.
+  vl_where = 'CARRID = P_CARRID AND CONNID = P_CONNID'.
+ELSEIF p_carrid IS NOT INITIAL AND p_connid IS INITIAL.
+  vl_where = 'CARRID = P_CARRID'.
+ELSEIF p_carrid IS INITIAL AND p_connid IS NOT INITIAL.
+  vl_where = 'CONNID = P_CONNID'.
+ENDIF.
+
+"Hacer el select dinámico
+SELECT * FROM (p_table)
+  INTO TABLE <fs_table>
+  WHERE (vl_where).
+
+IF sy-subrc = 0.
+*  LOOP AT it_spfli ASSIGNING <fs_spfli>.
+*    WRITE:/ <fs_spfli>-carrid, <fs_spfli>-connid, <fs_spfli>-countryfr, <fs_spfli>-cityfrom.
+*  ENDLOOP.
+ENDIF.

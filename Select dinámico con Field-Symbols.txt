@@ -1,0 +1,25 @@
+Caso: se desea realizar un Select utilizando variables en las condiciones
+
+Solución: usamos un select dinámico. Ver que para filtrar campos caracteres se agregan doble comillas simples.
+
+
+REPORT  zselect_dinamico.
+ 
+DATA:   lt_ekko       TYPE TABLE OF ekko,
+        lc_tabname    TYPE tabname,
+        lc_tabint     TYPE tabname,
+        lc_where      TYPE STRING.
+ 
+FIELD-SYMBOLS:  <fs_tab> TYPE STANDARD TABLE,
+                <fs_it> TYPE STANDARD TABLE.
+ 
+lc_tabname = 'EKKO'.
+lc_tabint  = 'LT_EKKO'.
+lc_where   = 'BUKRS EQ 1000 AND BSART EQ ''NB'''.
+ 
+ASSIGN (lc_tabint) TO <fs_it>.
+REFRESH <fs_it>.
+SELECT *
+  INTO TABLE <fs_it>
+  FROM (lc_tabname)
+  WHERE (lc_where).

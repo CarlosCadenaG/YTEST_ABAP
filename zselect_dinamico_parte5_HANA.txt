@@ -1,0 +1,97 @@
+*&---------------------------------------------------------------------*
+*& Report  ZSELECT_DINAMICO
+*&
+*&---------------------------------------------------------------------*
+*&
+*&                    HANA
+*&
+*&---------------------------------------------------------------------*
+
+REPORT zselect_dinamico.
+
+PARAMETERS: p_carrid TYPE spfli-carrid, "SPFLI, SFLIGHT
+            p_connid TYPE spfli-connid, "SPFLI, SFLIGHT
+            p_matnr  TYPE mara-matnr, "MARA
+            p_bukrs  TYPE bkpf-bukrs, "BKPF, BSEG
+            p_belnr  TYPE bkpf-belnr, "BKPF, BSEG
+            p_table  TYPE tabname.
+
+DATA: vl_where  TYPE string,
+      dref      TYPE REF TO data,
+      vl_campos TYPE string.
+
+TYPES: BEGIN OF ty_mara,
+         matnr TYPE mara-matnr,
+         mtart TYPE mara-mtart,
+         matkl TYPE mara-matkl,
+         meins TYPE mara-meins,
+       END OF ty_mara.
+
+FIELD-SYMBOLS:<fs_table>  TYPE STANDARD TABLE,
+              <gv_fldval> TYPE any.
+
+"Armar sentencia where
+CASE p_table.
+  WHEN 'SPFLI' OR 'SFLIGHT'.
+    IF p_carrid IS NOT INITIAL AND p_connid IS NOT INITIAL.
+      vl_where = 'CARRID = ''' && p_carrid && ''' AND CONNID = ''' && p_connid && ''''.
+    ELSEIF p_carrid IS NOT INITIAL AND p_connid IS INITIAL.
+      vl_where = 'CARRID = P_CARRID'.
+    ELSEIF p_carrid IS INITIAL AND p_connid IS NOT INITIAL.
+      vl_where = 'CONNID = P_CONNID'.
+    ENDIF.
+
+    vl_campos = '*'.
+
+  WHEN 'MARA'.
+    vl_where = 'MATNR = P_MATNR'.
+    vl_campos = 'MATNR MTART MATKL MEINS'.
+
+  WHEN 'BKPF' OR 'BSEG'.
+    vl_campos = '*'.
+
+    IF p_bukrs IS NOT INITIAL AND p_belnr IS NOT INITIAL.
+      vl_where = 'BUKRS = P_BUKRS AND BELNR = P_BELNR'.
+    ELSEIF p_bukrs IS NOT INITIAL AND p_belnr IS INITIAL.
+      vl_where = 'BUKRS = P_BUKRS'.
+    ELSEIF p_bukrs IS INITIAL AND p_belnr IS NOT INITIAL.
+      vl_where = 'BELNR = P_BELNR'.
+    ENDIF.
+  WHEN OTHERS.
+ENDCASE.
+
+"Asignar la estructura a la tabla dinámica
+IF p_table = 'MARA'.
+  CREATE DATA dref TYPE TABLE OF ('TY_MARA').
+  ASSIGN dref->* TO <fs_table>.
+ELSE.
+  CREATE DATA dref TYPE TABLE OF (p_table).
+  ASSIGN dref->* TO <fs_table>.
+ENDIF.
+
+
+"Obtener los campos que contiene la estructura
+DATA(it_comp) = CAST cl_abap_structdescr( cl_abap_typedescr=>describe_by_name(
+                                  p_table ) )->get_components( ).
+
+"Hacer el select dinámico
+SELECT (vl_campos)
+  FROM (p_table)
+  INTO TABLE <fs_table>
+  WHERE (vl_where).
+
+"Como leer componentes de una tabla dinámica, para poder usar sus valores.
+IF sy-subrc = 0.
+  "Mostrar ALV nuevo de HANA con los datos consultados:
+  cl_demo_output=>display( <fs_table> ).
+
+
+  "Te dejo la manera de leer los datos de la tabla dinámica, por si la ocupas :)
+*  LOOP AT <fs_table> ASSIGNING <fs_item>.
+*    LOOP AT it_comp INTO wa_comp.
+*      ASSIGN COMPONENT wa_comp-name OF STRUCTURE <fs_item> TO <gv_fldval>.
+*      WRITE <gv_fldval>.
+*    ENDLOOP.
+*    WRITE:/.
+*  ENDLOOP.
+ENDIF.

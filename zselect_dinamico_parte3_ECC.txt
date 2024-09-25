@@ -1,0 +1,60 @@
+*&---------------------------------------------------------------------*
+*& Report  ZSELECT_DINAMICO
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+REPORT zselect_dinamico.
+
+TYPE-POOLS: abap.
+
+PARAMETERS: p_carrid TYPE spfli-carrid,
+            p_connid TYPE spfli-connid,
+            p_table  TYPE tabname.
+
+DATA: vl_where    TYPE string,
+      dref        TYPE REF TO data,
+      wa_comp     TYPE abap_compdescr,
+      it_comp     TYPE STANDARD TABLE OF abap_compdescr,
+      table_type  TYPE REF TO cl_abap_tabledescr,
+      struct_type TYPE REF TO cl_abap_structdescr.
+
+FIELD-SYMBOLS:<fs_table>  TYPE STANDARD TABLE,
+              <fs_item>   TYPE any,
+              <gv_fldval> TYPE any.
+
+"Armar sentencia where
+IF p_carrid IS NOT INITIAL AND p_connid IS NOT INITIAL.
+  vl_where = 'CARRID = P_CARRID AND CONNID = P_CONNID'.
+ELSEIF p_carrid IS NOT INITIAL AND p_connid IS INITIAL.
+  vl_where = 'CARRID = P_CARRID'.
+ELSEIF p_carrid IS INITIAL AND p_connid IS NOT INITIAL.
+  vl_where = 'CONNID = P_CONNID'.
+ENDIF.
+
+"Asignar la estructura a la tabla dinámica
+CREATE DATA dref TYPE TABLE OF (p_table).
+ASSIGN dref->* TO <fs_table>.
+
+"Obtener los campos que contiene la estructura
+table_type ?= cl_abap_tabledescr=>describe_by_data( <fs_table> ).
+struct_type ?= table_type->get_table_line_type( ).
+it_comp[] = struct_type->components.
+
+"Hacer el select dinámico
+SELECT * FROM (p_table)
+  INTO TABLE <fs_table>
+  WHERE (vl_where).
+
+"Como leer componentes de una tabla dinámica, para poder usar sus valores.
+IF sy-subrc = 0.
+  LOOP AT <fs_table> ASSIGNING <fs_item>.
+    LOOP AT it_comp INTO wa_comp.
+      ASSIGN COMPONENT wa_comp-name OF STRUCTURE <fs_item> TO <gv_fldval>.
+      WRITE <gv_fldval>.
+    ENDLOOP.
+    WRITE:/.
+  ENDLOOP.
+
+ENDIF.

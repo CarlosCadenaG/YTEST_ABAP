@@ -2,7 +2,7 @@ version: 0.0
 os: linux
 files:
   - source: /
-    destination: /path/to/deployment/directory
+    destination: /var/www/myapp  # Ruta de destino
 hooks:
   AfterInstall:
     - location: scripts/install_dependencies.sh

@@ -179,3 +179,4 @@ Resources:
         - true
         - !Ref IncludeGlobalEvents
       IsMultiRegionTrail: !Ref MultiRegion
+      

@@ -16,5 +16,5 @@ phases:
       - echo "Comprimido y subiendo a S3..."
       - zip -r build-output.zip YTEST_ABAP/
       - echo "Subiendo a S3 con cifrado KMS..."
-      - aws s3 cp build-output.zip s3://ytest-abap-backups/ --sse aws:kms  # Subida con cifrado KMS
+      - aws s3 cp build-output.zip s3://ytest-abap-backups/ --sse aws:kms  --acl bucket-owner-full-control  # Subida con cifrado KMS y propiedad del bucket
     

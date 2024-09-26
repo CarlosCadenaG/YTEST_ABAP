@@ -1,14 +1,14 @@
-CLASS y_class_test DEFINITION
-  PUBLIC
-  FINAL
-  CREATE PUBLIC .
+class Y_CLASS_TEST definition
+  public
+  final
+  create public .
 
-  PUBLIC SECTION.
-  PROTECTED SECTION.
-  PRIVATE SECTION.
+public section.
+protected section.
+private section.
 ENDCLASS.
 
 
 
-CLASS y_class_test IMPLEMENTATION.
+CLASS Y_CLASS_TEST IMPLEMENTATION.
 ENDCLASS.

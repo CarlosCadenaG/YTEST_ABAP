@@ -5,6 +5,7 @@
 *&
 *&
 *&---------------------------------------------------------------------*
+
 REPORT ZABAPGIT_TEST_SSL_COPY.
 * See https://github.com/larshp/abapGit/
 

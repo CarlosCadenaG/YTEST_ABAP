@@ -42,7 +42,7 @@ TABLES: sxs_attr,
         trdirt,              "Program texts
         sxc_exit.            "BADI exits
 
-TYPE-POOLS: slis.            "Globale Typen für generische Listbausteine
+TYPE-POOLS: slis.            "Globale Typen fÃ¼r generische Listbausteine
 
 DATA: tabix         LIKE sy-tabix,
       w_linnum      TYPE i,
@@ -168,9 +168,9 @@ END OF t_submit.
 DATA: i_submit TYPE STANDARD TABLE OF t_submit WITH HEADER LINE.
 
 * Source code
-TYPES: BEGIN OF t_sourcetab,                        "#EC * (SLIN lügt!)
-        line(200),                                  "#EC * (SLIN lügt!)
-      END OF t_sourcetab.                           "#EC * (SLIN lügt!)
+TYPES: BEGIN OF t_sourcetab,                        "#EC * (SLIN lÃ¼gt!)
+        line(200),                                  "#EC * (SLIN lÃ¼gt!)
+      END OF t_sourcetab.                           "#EC * (SLIN lÃ¼gt!)
 DATA: sourcetab TYPE STANDARD TABLE OF t_sourcetab WITH HEADER LINE.
 DATA c_overflow(30000) TYPE c.
 
@@ -350,6 +350,7 @@ FORM data_select.
 
     ENDIF.
   ENDIF.
+
 
 * Call customer-function aus Program coding
   READ REPORT p_pname INTO sourcetab.

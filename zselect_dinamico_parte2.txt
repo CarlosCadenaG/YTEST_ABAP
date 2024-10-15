@@ -25,7 +25,7 @@ ELSEIF p_carrid IS INITIAL AND p_connid IS NOT INITIAL.
   vl_where = 'CONNID = P_CONNID'.
 ENDIF.
 
-"Hacer el select din·mico
+"Hacer el select din√°mico
 SELECT * FROM (p_table)
   INTO TABLE <fs_table>
   WHERE (vl_where).
